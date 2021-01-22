@@ -171,7 +171,7 @@
     <ClInclude Include="..\Source\src\GameEngine\Transform.hpp">
       <Filter>src\GameEngine</Filter>
     </ClInclude>
-    <ClInclude Include="Light.hpp">
+    <ClInclude Include="..\Source\src\GameEngine\Lighting.hpp">
       <Filter>src\GameEngine</Filter>
     </ClInclude>
   </ItemGroup>

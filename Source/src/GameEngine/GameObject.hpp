@@ -5,6 +5,7 @@
 #include "CollisionManager.hpp"
 #include "Camera.hpp"
 #include "Transform.hpp"
+#include "Lighting.hpp"
 
 namespace GameEngine {
 	namespace Data {
@@ -38,6 +39,7 @@ namespace GameEngine {
 		static long int currentMaxID;
 
 		long int id;
+		bool _isLight;
 		bool _isRendered;
 		bool _hasTexture;
 		std::string type;
@@ -50,8 +52,8 @@ namespace GameEngine {
 		RigidBody rigidbody;
 		Collider *collider;
 		Texture2D *texture;
-		glm::vec3 color;
-		Data::lightingData lightingInfo;
+		Material material;
+		Light light;
 
 		/// <summary>
 		/// How much the object must be in a distorted state (specifically, the player)
@@ -99,8 +101,8 @@ namespace GameEngine {
 		/// Renders the GameObject on the scene.
 		/// </summary>
 		/// <param name="camera">The camera used in the scene</param>
-		/// <param name="lightLocation">The location of the light</param>
-		void Render(GameEngine::Camera* camera, const glm::vec3& lightLocation);
+		/// <param name="ligths">The lights in the scene</param>
+		void Render(GameEngine::Camera* camera, const std::vector<Light>& lights);
 
 		/// <summary>
 		/// Renders the GameObject on the scene.
@@ -204,6 +206,13 @@ namespace GameEngine {
 		/// </summary>
 		/// <param name="texture"></param>
 		void SetTexture(Texture2D& texture);
+
+		/// <summary>
+		/// Get the light of the object.
+		/// </summary>
+		/// <param name="light_ptr">The pointer in which to store the light</param>
+		/// <returns>If this object has a light</returns>
+		bool getLight(Light* light_ptr) const;
 
 		/// <summary>
 		/// Returns a reference to the rigidbody of the object

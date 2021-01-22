@@ -7,11 +7,12 @@ std::unordered_map<std::string, Mesh*>* GameEngine::GameObject::meshes = nullptr
 std::unordered_map<std::string, Shader*>* GameEngine::GameObject::shaders = nullptr;
 std::unordered_map<std::string, Texture2D*>* GameEngine::GameObject::textures = nullptr;
 
-GameEngine::GameObject::GameObject() : id(-1), type(""), isInJump(false), distortedTime(0), _hasTexture(false) , _isRendered(true), position(glm::vec3(0)), mesh(nullptr), shader(nullptr), collider(nullptr), texture(nullptr) {};
+GameEngine::GameObject::GameObject() : id(-1), type(""), isInJump(false), distortedTime(0), _hasTexture(false) , _isLight(false), _isRendered(true), position(glm::vec3(0)), mesh(nullptr), shader(nullptr), collider(nullptr), texture(nullptr) {};
 
 GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& position) : type(type), position(position), distortedTime(0), mesh(nullptr), shader(nullptr), collider(nullptr), texture(nullptr) {
 	id = currentMaxID++;
 	_isRendered = true;
+	_isLight = false;
 	_hasTexture = false;
 	isInJump = false;
 
@@ -19,13 +20,16 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		scale = glm::vec3(ObjectConstants::playerHeight * 0.25f);
 		scale *= glm::vec3(1, 1, -1);
 		mesh = (*meshes)["spaceship"];
-		/*
-		scale = glm::vec3(ObjectConstants::playerHeight);
-		mesh = (*meshes)["sphere"];*/
-		shader = (*shaders)["Distorted"];
-		lightingInfo = { 5.f, 0.5f, .25f };
+		shader = (*shaders)["Base"];
+		texture = (*textures)["spaceship"];
+		_hasTexture = true;
+		material = {
+			glm::vec3(1, 0, 0),
+			glm::vec3(5.f),
+			glm::vec3(0.05f),
+			128.f
+		};
 
-		color = glm::vec3(1, 0, 0);
 		collider = new Collider(id, position, ObjectConstants::playerHeight / 2);
 
 		rigidbody.state.x = position;
@@ -37,7 +41,12 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		shader = (*shaders)["Base"];
 		texture = (*textures)["platform"];
 		_hasTexture = true;
-		lightingInfo = { 32.f, 0.99f, .3f };
+		material = {
+			glm::vec3(1, 0, 0),
+			glm::vec3(32.f),
+			glm::vec3(0.05f),
+			16.f
+		};
 
 		// Compute the Y component of the position
 		this->position.y = ObjectConstants::platformTopHeight - scale.y / 2;
@@ -54,9 +63,12 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		scale = glm::vec3(0.1);
 		mesh = (*meshes)["sphere"];
 		shader = (*shaders)["Base"];
-		lightingInfo = { 5.f, 0.5f, .25f };
-
-		color = glm::vec3(1, 0, 0);
+		material = {
+			glm::vec3(1, 0, 0),
+			glm::vec3(5.f),
+			glm::vec3(0.3f),
+			.25f
+		};
 		collider = new Collider(id, position, 0.1);
 
 		rigidbody.state.x = this->position;
@@ -67,8 +79,12 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 
 		mesh = (*meshes)["box"];
 		shader = (*shaders)["UI"];
-
-		color = glm::vec3(0.9, 0.6, 0.2);
+		material = {
+			glm::vec3(0.9, 0.6, 0.2),
+			glm::vec3(5.f),
+			glm::vec3(0.3f),
+			.25f
+		};
 	}
 	else if (type == "ufuelbar") {
 		scale = glm::vec3(1, 1, 0.5);
@@ -76,7 +92,12 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		mesh = (*meshes)["box"];
 		shader = (*shaders)["UI"];
 
-		color = glm::vec3(0.5);
+		material = {
+			glm::vec3(0.5f),
+			glm::vec3(5.f),
+			glm::vec3(0.3f),
+			.25f
+		};
 	}
 	else if (type == "life") {
 		scale = glm::vec3(0.125);
@@ -84,7 +105,12 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		mesh = (*meshes)["box"];
 		shader = (*shaders)["UI"];
 
-		color = glm::vec3(0.7, 0.1, 0.2);
+		material = {
+			glm::vec3(0.7, 0.1, 0.2),
+			glm::vec3(5.f),
+			glm::vec3(0.3f),
+			.25f
+		};
 		_hasTexture = true;
 		texture = (*textures)["life"];
 	}
@@ -97,31 +123,32 @@ void GameEngine::GameObject::UpdatePlatformData()
 
 	std::string color_string = type.substr(type.find("_") + 1);
 	if (color_string == "red") {
-		color = glm::vec3(1, 0, 0);
+		material.color = glm::vec3(1, 0, 0);
 	}
 	else if (color_string == "yellow") {
-		color = glm::vec3(1, 1, 0);
+		material.color = glm::vec3(1, 1, 0);
 	}
 	else if (color_string == "orange") {
-		color = glm::vec3(0.9, 0.6, 0.2);
+		material.color = glm::vec3(0.9, 0.6, 0.2);
 	}
 	else if (color_string == "green") {
-		color = glm::vec3(0, 1, 0);
+		material.color = glm::vec3(0, 1, 0);
 	}
 	else if (color_string == "purple") {
-		color = glm::vec3(0.5, 0.1, 0.4);
+		material.color = glm::vec3(0.5, 0.1, 0.4);
 	}
 	else if (color_string == "blue") {
-		color = glm::vec3(0, 0, 1);
+		material.color = glm::vec3(0, 0, 1);
 	}
 	else if (color_string == "white") {
-		color = glm::vec3(1);
+		material.color = glm::vec3(1);
 	}
 }
 
 GameEngine::GameObject::GameObject(const GameObject& other)
 {
 	id = other.id;
+	_isLight = other._isLight;
 	_isRendered = other._isRendered;
 	_hasTexture = other._hasTexture;
 	position = other.position;
@@ -129,14 +156,14 @@ GameEngine::GameObject::GameObject(const GameObject& other)
 	scale = other.scale;
 	mesh = other.mesh;
 	shader = other.shader;
-	color = other.color;
 	collider = other.collider;
-	lightingInfo = other.lightingInfo;
 	rigidbody = other.rigidbody;
 	texture = other.texture;
+	material = other.material;
+	light = other.light;
 }
 
-void GameEngine::GameObject::Render(GameEngine::Camera *camera, const glm::vec3& lightLocation)
+void GameEngine::GameObject::Render(GameEngine::Camera* camera, const std::vector<Light>& lights)
 {
 	glm::mat4 matrix = glm::mat4(1);
 	matrix = Translate(matrix, position);
@@ -153,19 +180,36 @@ void GameEngine::GameObject::Render(GameEngine::Camera *camera, const glm::vec3&
 	glUniformMatrix4fv(shader->loc_view_matrix, 1, GL_FALSE, glm::value_ptr(camera->GetViewMatrix()));
 	glUniformMatrix4fv(shader->loc_projection_matrix, 1, GL_FALSE, glm::value_ptr(camera->projectionMatrix));
 	glUniformMatrix4fv(shader->loc_model_matrix, 1, GL_FALSE, glm::value_ptr(matrix));
-	
-	// Bind Light-Data
+
+	// Bind Lights Data
 	glm::vec3 cameraPos = camera->position;
-	glUniform3f(shader->loc_eye_pos, cameraPos.x, cameraPos.y, cameraPos.z);
-	glUniform3f(glGetUniformLocation(shader->program, "light_position"), lightLocation.x, lightLocation.y, lightLocation.z);
+	glUniform3fv(shader->loc_eye_pos, 1, glm::value_ptr(cameraPos));
+	glUniform1i(glGetUniformLocation(shader->program, "lights_count"), (GLint)lights.size());
+
+	// Send the data for all the lights
+	int id = 0;
+	for (auto _light : lights) {
+		std::string name = "lights[";
+		glUniform1i(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].type").c_str()), (GLint)_light.type);
+		glUniform3fv(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].position").c_str()), 1, glm::value_ptr(_light.position));
+		glUniform3fv(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].direction").c_str()), 1, glm::value_ptr(_light.direction));
+		glUniform3fv(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].ambient").c_str()), 1, glm::value_ptr(_light.ambient));
+		glUniform3fv(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].diffuse").c_str()), 1, glm::value_ptr(_light.diffuse));
+		glUniform3fv(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].specular").c_str()), 1, glm::value_ptr(_light.specular));
+		glUniform1f(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].constant").c_str()), (GLfloat)_light.constant);
+		glUniform1f(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].linear").c_str()), (GLfloat)_light.linear);
+		glUniform1f(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].quadratic").c_str()), (GLfloat)_light.quadratic);
+		glUniform1f(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].cutOff").c_str()), (GLfloat)_light.cutOff);
+		glUniform1f(glGetUniformLocation(shader->program, (name + std::to_string(id) + "].outerCutOff").c_str()), (GLfloat)_light.outerCutOff);
+		id++;
+	}
 
 	// Bind Material Data
-	glUniform1f(glGetUniformLocation(shader->program, "material_shininess"), (GLfloat)lightingInfo.materialShine);
-	glUniform1f(glGetUniformLocation(shader->program, "material_kd"), (GLfloat)lightingInfo.materialKd);
-	glUniform1f(glGetUniformLocation(shader->program, "material_ks"), (GLfloat)lightingInfo.materialKs);
-	glUniform3fv(glGetUniformLocation(shader->program, "object_color"), 1, glm::value_ptr(color));
-	glUniform1i(glGetUniformLocation(shader->program, "is_distorted"), (distortedTime > 0));
-
+	glUniform3fv(glGetUniformLocation(shader->program, "material.color"), 1, glm::value_ptr(material.color));
+	glUniform3fv(glGetUniformLocation(shader->program, "material.diffuse"), 1, glm::value_ptr(material.diffuse));
+	glUniform3fv(glGetUniformLocation(shader->program, "material.specular"), 1, glm::value_ptr(material.specular));
+	glUniform1f(glGetUniformLocation(shader->program, "material.shininess"), material.shininess);
+	
 	// Bind Texture Data
 	if (_hasTexture) {
 		glActiveTexture(GL_TEXTURE0);
@@ -176,6 +220,7 @@ void GameEngine::GameObject::Render(GameEngine::Camera *camera, const glm::vec3&
 
 	// Bind Other Data
 	glUniform1f(glGetUniformLocation(shader->program, "time"), (GLfloat)Engine::GetElapsedTime());
+	glUniform1i(glGetUniformLocation(shader->program, "is_distorted"), (distortedTime > 0));
 
 	glBindVertexArray(mesh->GetBuffers()->VAO);
 	glDrawElements(mesh->GetDrawMode(), static_cast<int>(mesh->indices.size()), GL_UNSIGNED_SHORT, 0);
@@ -197,7 +242,7 @@ void GameEngine::GameObject::Render2D()
 	glUniformMatrix4fv(shader->loc_projection_matrix, 1, GL_FALSE, glm::value_ptr(glm::mat4(1)));
 	glUniformMatrix4fv(shader->loc_model_matrix, 1, GL_FALSE, glm::value_ptr(matrix));
 
-	glUniform3fv(glGetUniformLocation(shader->program, "object_color"), 1, glm::value_ptr(color));
+	glUniform3fv(glGetUniformLocation(shader->program, "object_color"), 1, glm::value_ptr(material.color));
 
 	// Bind Texture Data
 	if (_hasTexture) {
@@ -327,6 +372,15 @@ void GameEngine::GameObject::MovementType(GameEngine::PhysicsConstants::Motion_T
 void GameEngine::GameObject::MovementFunction(void(*f)(GameEngine::State& state, double time, double dt))
 {
 	rigidbody.m_func = f;
+}
+
+bool GameEngine::GameObject::getLight(Light* light_ptr) const
+{
+	if (_isLight) {
+		*light_ptr = light;
+		return true;
+	}
+	return false;
 }
 
 GameEngine::RigidBody& GameEngine::GameObject::getRigidBody()

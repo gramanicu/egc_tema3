@@ -12,14 +12,15 @@
 #include <Component/SimpleScene.h>
 #include "GameEngine/GameObject.hpp"
 #include "GameEngine/Camera.hpp"
+#include "GameEngine/Lighting.hpp"
 
 namespace Skyroads {
 	namespace Constants {
 		const std::vector<std::string> platformTypes{ "platform_red", "platform_green", "platform_yellow", "platform_orange", "platform_purple", "platform_blue", "platform_white" };
-		const std::vector<std::string> shaderNames{ "Base", "UI", "Distorted" };
-		const std::vector<std::string> meshNames{ "box", "sphere", "spaceship" };
+		const std::vector<std::string> shaderNames{ "Base", "UI" };
+		const std::vector<std::string> meshNames{ "box", "sphere"};
 		const std::vector<std::string> textureNames{ "life" };
-		const std::vector<std::string> modelNames{ "platform" };
+		const std::vector<std::string> modelNames{ "platform", "spaceship" };
 
 		const glm::vec3 lightPositionOffset = glm::vec3(0., 7.75f, 0.);
 		const glm::vec3 playerStartingPosition = glm::vec3(0, 2.f, 25.f);
@@ -62,6 +63,7 @@ namespace Skyroads {
 			float cameraFOV = 75.f;
 			bool cameraMode = true;
 			glm::vec2 cameraRotation = glm::vec2(0);
+			float distanceToTarget = 2.25f;
 		};
 		CameraSettings cameraSettings;
 
@@ -159,5 +161,6 @@ namespace Skyroads {
 		void OnKeyPress(int key, int mods) override;
 		void OnKeyRelease(int key, int mods) override;
 		void OnMouseMove(int mouseX, int mouseY, int deltaX, int deltaY) override;
+		void OnMouseScroll(int mouseX, int mouseY, int offsetX, int offsetY) override;
 	};
 }

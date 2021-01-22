@@ -31,7 +31,7 @@ GameManager::GameManager()
 {
 	camera = new GameEngine::Camera();
 	camera->Set(glm::vec3(0, 5.f, 30.f), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
-	camera->distanceToTarget = 4.25f;
+	camera->distanceToTarget = gameState.cameraSettings.distanceToTarget;
 	camera->projectionMatrix = glm::perspective(RADIANS(gameState.cameraSettings.cameraFOV), window->props.aspectRatio, 0.01f, 200.f);
 }
 
@@ -41,6 +41,7 @@ GameManager::~GameManager()
 
 void GameManager::Init()
 {
+	glEnable(GL_MULTISAMPLE);
 	// Load meshes
 	for each (auto & name in Constants::meshNames) {
 		LoadMesh(name, "Source/src/Meshes/");
@@ -124,6 +125,8 @@ void GameManager::FrameStart()
 }
 
 void GameManager::UpdateCamera() {
+	camera->distanceToTarget = gameState.cameraSettings.distanceToTarget;
+
 	// Update camera mode and position
 	if (gameState.cameraSettings.cameraMode) {
 		// 3rd Person
@@ -252,7 +255,7 @@ void Skyroads::GameManager::RenderUI()
 		life.Render2D();
 
 		lifesToRender--;
-		pos.y += 0.15;
+		pos.y += 0.15f;
 	}
 }
 
@@ -267,6 +270,20 @@ void GameManager::Update(float deltaTimeSeconds)
 
 	// Update Light
 	glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x + Constants::lightPositionOffset;
+	
+	std::vector<GameEngine::Light> lights;
+	GameEngine::Light light = {
+		GameEngine::LightType::Spot,
+		lightPosition,
+		glm::vec3(0, -1, 0),
+		glm::vec3(0.25f),
+		glm::vec3(0.45f),
+		glm::vec3(0.9f, 0.95f, 1.f),
+		1.0f, 0.0025f, 0.0000125f,
+		glm::radians(45.f), glm::radians(25.f)
+	};
+	lights.push_back(light);
+	
 	// For every gameObject types (type.first = id, type.second = the object)
 	for (auto& object : gameObjects) {
 		// Update position
@@ -276,7 +293,7 @@ void GameManager::Update(float deltaTimeSeconds)
 		CheckCollisions(object.second.ManageCollisions(gameObjectsVector, &gameObjects));
 
 		// Render objects
-		object.second.Render(camera, lightPosition);
+		object.second.Render(camera, lights);
 	};
 
 	RenderUI();
@@ -368,7 +385,7 @@ void GameManager::PlatformManagement()
 		}
 		else {
 			// Effect platform
-			platType = mapBetweenRanges(platType, Constants::simplePlatPercent, 100, 0, 9, 1);
+			platType = (int)mapBetweenRanges(platType, Constants::simplePlatPercent, 100, 0, 9, 1);
 
 			if (platType < 1) {
 				// Red platform - very few
@@ -448,6 +465,14 @@ void GameManager::OnKeyPress(int key, int mods)
 			gameObjects[0].getRigidBody().state.v.y = 3.33f;
 		}
 	} break;
+	/*case GLFW_KEY_KP_SUBTRACT: {
+		gameState.cameraSettings.distanceToTarget += 0.25f;
+		std::cout << "New zoom " << gameState.cameraSettings.distanceToTarget << "\n";
+	} break;
+	case GLFW_KEY_KP_ADD: {
+		gameState.cameraSettings.distanceToTarget -= 0.25f;
+		std::cout << "New zoom " << gameState.cameraSettings.distanceToTarget << "\n";
+	} break;*/
 	}
 
 }
@@ -463,11 +488,11 @@ void GameManager::OnMouseMove(int mouseX, int mouseY, int deltaX, int deltaY)
 		float xLimit = 0.275;
 		float yLimit = 0.5;
 
-		float sensivityOX = 0.001f;
-		float sensivityOY = 0.001f;
+		float sensitivityOX = 0.001f;
+		float sensitivityOY = 0.001f;
 		glm::vec2 rotation = gameState.cameraSettings.cameraRotation;
 
-		rotation += glm::vec2(-sensivityOX * deltaY, -sensivityOY * deltaX);
+		rotation += glm::vec2(-sensitivityOX * deltaY, -sensitivityOY * deltaX);
 
 		if (rotation.x > xLimit) rotation.x = xLimit;
 		if (rotation.x < -xLimit) rotation.x = -xLimit;
@@ -475,5 +500,24 @@ void GameManager::OnMouseMove(int mouseX, int mouseY, int deltaX, int deltaY)
 		if (rotation.y < -yLimit) rotation.y = -yLimit;
 
 		gameState.cameraSettings.cameraRotation = rotation;
+	}
+}
+
+void GameManager::OnMouseScroll(int mouseX, int mouseY, int offsetX, int offsetY) {
+	if (window->MouseHold(GLFW_MOUSE_BUTTON_RIGHT)) {
+		float distance = gameState.cameraSettings.distanceToTarget;
+		float maxZoom = 2.5f;
+		float minZoom = 5.0f;
+
+		float sensitivity = 0.001f;
+
+		distance += offsetX * sensitivity;
+
+		if (distance > minZoom) distance = minZoom;
+		if (distance < maxZoom) distance = maxZoom;
+
+		gameState.cameraSettings.distanceToTarget = distance;
+
+		std::cout << distance << "\n";
 	}
 }
