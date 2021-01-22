@@ -1,6 +1,6 @@
-# Second EGC Homework - SkyRoads
+# Third EGC Homework - SkyRoads
 
-The problem statement can be found [here](https://ocw.cs.pub.ro/courses/egc/teme/2020/02).
+The problem statement can be found [here](https://ocw.cs.pub.ro/courses/egc/teme/2020/03). This is a continuation of the 2nd homework.
 
 ## Table of Contents
 
@@ -99,4 +99,4 @@ There are 3 shaders used by the game:
 
 Shaders can be added to the game by placing the two files (`shader_name`.VS.glsl, `shader_name`.FS.glsl) in the **Shaders** folder, and adding `shader_name` to the `meshNames` constant in the `GameManager`.
 
-© 2020 Grama Nicolae, 332CA
+© 2021 Grama Nicolae, 332CA
