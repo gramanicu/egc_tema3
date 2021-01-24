@@ -38,6 +38,7 @@
     <ClCompile Include="..\Source\src\GameEngine\Colliders.cpp" />
     <ClCompile Include="..\Source\src\GameEngine\GameObject.cpp" />
     <ClCompile Include="..\Source\src\GameEngine\CollisionManager.cpp" />
+    <ClCompile Include="..\Source\src\GameEngine\Objects.cpp" />
     <ClCompile Include="..\Source\src\GameEngine\Physics.cpp" />
     <ClCompile Include="..\Source\src\GameEngine\Transform.cpp" />
     <ClCompile Include="..\Source\src\GameManager.cpp" />
@@ -66,6 +67,7 @@
     <ClInclude Include="..\Source\src\GameEngine\GameObject.hpp" />
     <ClInclude Include="..\Source\src\GameEngine\CollisionManager.hpp" />
     <ClInclude Include="..\Source\src\GameEngine\Lighting.hpp" />
+    <ClInclude Include="..\Source\src\GameEngine\Objects.hpp" />
     <ClInclude Include="..\Source\src\GameEngine\Physics.hpp" />
     <ClInclude Include="..\Source\src\GameEngine\Transform.hpp" />
     <ClInclude Include="..\Source\src\GameManager.hpp" />
@@ -73,8 +75,18 @@
   <ItemGroup>
     <None Include="..\Source\src\Shaders\Base.FS.glsl" />
     <None Include="..\Source\src\Shaders\Base.VS.glsl" />
+    <None Include="..\Source\src\Shaders\Blur.FS.glsl" />
+    <None Include="..\Source\src\Shaders\Blur.VS.glsl" />
     <None Include="..\Source\src\Shaders\Distorted.FS.glsl" />
     <None Include="..\Source\src\Shaders\Distorted.VS.glsl" />
+    <None Include="..\Source\src\Shaders\EmmisiveTransparency.FS.glsl" />
+    <None Include="..\Source\src\Shaders\EmmisiveTransparency.VS.glsl" />
+    <None Include="..\Source\src\Shaders\ScreenShader.FS.glsl" />
+    <None Include="..\Source\src\Shaders\ScreenShader.VS.glsl" />
+    <None Include="..\Source\src\Shaders\Skybox.FS.glsl" />
+    <None Include="..\Source\src\Shaders\Skybox.VS.glsl" />
+    <None Include="..\Source\src\Shaders\Spaceship.FS.glsl" />
+    <None Include="..\Source\src\Shaders\Spaceship.VS.glsl" />
     <None Include="..\Source\src\Shaders\UI.FS.glsl" />
     <None Include="..\Source\src\Shaders\UI.VS.glsl" />
   </ItemGroup>

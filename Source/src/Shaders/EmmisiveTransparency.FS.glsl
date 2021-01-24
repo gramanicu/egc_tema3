@@ -35,9 +35,6 @@ struct Light {
     float outerCutOff;
 };
 
-layout(location = 0) out vec4 FragColor;
-layout(location = 1) out vec4 BrightColor;
-
 uniform sampler2D texture1;
 uniform bool has_texture;
 
@@ -55,8 +52,7 @@ uniform Light lights[max_light_sources];
 // Uniforms for object properties
 uniform Material material;
 
-// Uniforms for other data
-uniform float time;
+out vec4 out_color;
 
 vec3 compute_lighting(Light light, Material material, vec3 color, vec3 normal, vec3 viewDir) {
 	// Direction of the light
@@ -104,10 +100,6 @@ vec3 compute_lighting(Light light, Material material, vec3 color, vec3 normal, v
 	return (ambient_light + diffuse_light + specular_light);
 }
 
-float map(float value, float min1, float max1, float min2, float max2) {
-	return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
-}
-
 void main()
 {	
 	vec4 color_rgba;
@@ -133,14 +125,5 @@ void main()
 	for(int i = 0; i < lights_count; ++i) {
 		result += compute_lighting(lights[i], material, color, normal, viewDir);
 	}
-
-	float brightness = dot(result, vec3(0.2126, 0.7152, 0.0722));
-	if (brightness > 1.f) {
-		BrightColor = vec4(result, 1.f);
-	}
-	else {
-		BrightColor = vec4(0.f, 0.f, 0.f, 1.f);
-	}
-
-	FragColor = vec4(result, 1.0f);
+	out_color = vec4(result, 1.0f);
 }

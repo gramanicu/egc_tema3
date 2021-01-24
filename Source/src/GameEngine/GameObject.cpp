@@ -20,17 +20,18 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		scale = glm::vec3(ObjectConstants::playerHeight * 0.25f);
 		scale *= glm::vec3(1, 1, -1);
 		mesh = (*meshes)["spaceship"];
-		shader = (*shaders)["Base"];
+		shader = (*shaders)["Spaceship"];
 		texture = (*textures)["spaceship"];
 		_hasTexture = true;
 		material = {
-			glm::vec3(1, 0, 0),
-			glm::vec3(5.f),
-			glm::vec3(0.05f),
+			glm::vec3(0.f),
+			glm::vec3(0.2f),
+			glm::vec3(2.f),
+			glm::vec3(0.35f),
 			128.f
 		};
 
-		collider = new Collider(id, position, ObjectConstants::playerHeight / 2);
+		collider = new Collider(id, position, glm::vec3(ObjectConstants::playerHeight / 2));
 
 		rigidbody.state.x = position;
 		rigidbody.state.gravity_coef = .33f;
@@ -42,6 +43,7 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		texture = (*textures)["platform"];
 		_hasTexture = true;
 		material = {
+			glm::vec3(1, 0, 0),
 			glm::vec3(1, 0, 0),
 			glm::vec3(32.f),
 			glm::vec3(0.05f),
@@ -64,6 +66,7 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		mesh = (*meshes)["sphere"];
 		shader = (*shaders)["Base"];
 		material = {
+			glm::vec3(0.f),
 			glm::vec3(1, 0, 0),
 			glm::vec3(5.f),
 			glm::vec3(0.3f),
@@ -74,12 +77,30 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		rigidbody.state.x = this->position;
 		rigidbody.physics_enabled = false;
 	}
+	else if (type == "skybox") {
+		scale = glm::vec3(200.f);
+		mesh = (*meshes)["sphere"];
+		shader = (*shaders)["Skybox"];
+		texture = (*textures)["skybox"];
+		_hasTexture = true;
+		material = {
+			glm::vec3(1.f),
+			glm::vec3(1.f),
+			glm::vec3(0.f),
+			glm::vec3(0.f),
+			.0f
+		};
+
+		rigidbody.state.x = this->position;
+		rigidbody.physics_enabled = false;
+	}
 	else if (type == "fuelbar") {
 		scale = glm::vec3(1, 1, 1);
 
 		mesh = (*meshes)["box"];
 		shader = (*shaders)["UI"];
 		material = {
+			glm::vec3(0.9, 0.6, 0.2),
 			glm::vec3(0.9, 0.6, 0.2),
 			glm::vec3(5.f),
 			glm::vec3(0.3f),
@@ -94,6 +115,7 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 
 		material = {
 			glm::vec3(0.5f),
+			glm::vec3(0.5f),
 			glm::vec3(5.f),
 			glm::vec3(0.3f),
 			.25f
@@ -106,6 +128,7 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		shader = (*shaders)["UI"];
 
 		material = {
+			glm::vec3(0.7, 0.1, 0.2),
 			glm::vec3(0.7, 0.1, 0.2),
 			glm::vec3(5.f),
 			glm::vec3(0.3f),
@@ -123,25 +146,32 @@ void GameEngine::GameObject::UpdatePlatformData()
 
 	std::string color_string = type.substr(type.find("_") + 1);
 	if (color_string == "red") {
-		material.color = glm::vec3(1, 0, 0);
+		material.ambient = glm::vec3(1, 0, 0);
+		material.emmisive = glm::vec3(25.5, 0, 0);
 	}
 	else if (color_string == "yellow") {
-		material.color = glm::vec3(1, 1, 0);
+		material.ambient = glm::vec3(1, 1, 0);
+		material.emmisive = glm::vec3(25.5, 25.5, 0);
 	}
 	else if (color_string == "orange") {
-		material.color = glm::vec3(0.9, 0.6, 0.2);
+		material.ambient = glm::vec3(0.9, 0.6, 0.2);
+		material.emmisive = glm::vec3(25.9, 9.9, 7.1);
 	}
 	else if (color_string == "green") {
-		material.color = glm::vec3(0, 1, 0);
+		material.ambient = glm::vec3(0.9, 0.6, 0.2);
+		material.emmisive = glm::vec3(0, 25.5, 0);
 	}
 	else if (color_string == "purple") {
-		material.color = glm::vec3(0.5, 0.1, 0.4);
+		material.ambient = glm::vec3(0.5, 0.1, 0.4);
+		material.emmisive = glm::vec3(12.7, 2.5, 10.2);
 	}
 	else if (color_string == "blue") {
-		material.color = glm::vec3(0, 0, 1);
+		material.ambient = glm::vec3(0, 0, 1);
+		material.emmisive = glm::vec3(4.5, 5.5, 22.5);
 	}
 	else if (color_string == "white") {
-		material.color = glm::vec3(1);
+		material.ambient = glm::vec3(1);
+		material.emmisive = glm::vec3(25.5);
 	}
 }
 
@@ -205,7 +235,8 @@ void GameEngine::GameObject::Render(GameEngine::Camera* camera, const std::vecto
 	}
 
 	// Bind Material Data
-	glUniform3fv(glGetUniformLocation(shader->program, "material.color"), 1, glm::value_ptr(material.color));
+	glUniform3fv(glGetUniformLocation(shader->program, "material.emmisive"), 1, glm::value_ptr(material.emmisive));
+	glUniform3fv(glGetUniformLocation(shader->program, "material.ambient"), 1, glm::value_ptr(material.ambient));
 	glUniform3fv(glGetUniformLocation(shader->program, "material.diffuse"), 1, glm::value_ptr(material.diffuse));
 	glUniform3fv(glGetUniformLocation(shader->program, "material.specular"), 1, glm::value_ptr(material.specular));
 	glUniform1f(glGetUniformLocation(shader->program, "material.shininess"), material.shininess);
@@ -221,6 +252,21 @@ void GameEngine::GameObject::Render(GameEngine::Camera* camera, const std::vecto
 	// Bind Other Data
 	glUniform1f(glGetUniformLocation(shader->program, "time"), (GLfloat)Engine::GetElapsedTime());
 	glUniform1i(glGetUniformLocation(shader->program, "is_distorted"), (distortedTime > 0));
+
+	if (type == "player")
+	{
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, (*textures)["spaceship_window"]->GetTextureID());
+		glUniform1i(glGetUniformLocation(shader->program, "window_map"), 1);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, (*textures)["spaceship_exhaust"]->GetTextureID());
+		glUniform1i(glGetUniformLocation(shader->program, "exhaust_map"), 2);
+
+		// Spaceship shader data
+		using namespace ObjectConstants;
+		glUniform3fv(glGetUniformLocation(shader->program, "window_color_emm"), 1, glm::value_ptr(window_color_emm));
+		glUniform3fv(glGetUniformLocation(shader->program, "exhaust_color_emm"), 1, glm::value_ptr(exhaust_color_emm));
+	}
 
 	glBindVertexArray(mesh->GetBuffers()->VAO);
 	glDrawElements(mesh->GetDrawMode(), static_cast<int>(mesh->indices.size()), GL_UNSIGNED_SHORT, 0);
@@ -242,7 +288,7 @@ void GameEngine::GameObject::Render2D()
 	glUniformMatrix4fv(shader->loc_projection_matrix, 1, GL_FALSE, glm::value_ptr(glm::mat4(1)));
 	glUniformMatrix4fv(shader->loc_model_matrix, 1, GL_FALSE, glm::value_ptr(matrix));
 
-	glUniform3fv(glGetUniformLocation(shader->program, "object_color"), 1, glm::value_ptr(material.color));
+	glUniform3fv(glGetUniformLocation(shader->program, "object_color"), 1, glm::value_ptr(material.emmisive));
 
 	// Bind Texture Data
 	if (_hasTexture) {
@@ -272,12 +318,13 @@ std::vector<int> GameEngine::GameObject::ManageCollisions(std::vector<GameObject
 	if (type == "player") {
 		// Update the physics of the player if he collided with a platform
 		// This will actually just mean that the player will "stick" to the platform
-		if (collided.size() > 0) {
+		using namespace ObjectConstants;
+		if (collided.size() > 0 && rigidbody.state.x.y > -ObjectConstants::playerHeight / 4) {
 			rigidbody.state.v.y = 0;
-			rigidbody.state.x.y = ObjectConstants::platformTopHeight + ObjectConstants::playerHeight / 2;
+			rigidbody.state.x.y = ObjectConstants::platformTopHeight + ObjectConstants::playerHeight / 4;
 			isInJump = false;
 		}
-		return collided;
+		return collided;		// Continue other collisions from here
 	}
 	
 	return std::vector<int>(0);

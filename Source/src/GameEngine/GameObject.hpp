@@ -8,14 +8,6 @@
 #include "Lighting.hpp"
 
 namespace GameEngine {
-	namespace Data {
-		typedef struct _lightingData {
-			float materialShine = 5.f;
-			float materialKd = 0.5f;
-			float materialKs = 0.5f;
-		} lightingData;
-	}
-
 	namespace ObjectConstants {
 		/// <summary>
 		/// Where the top surface of the platform is placed
@@ -31,6 +23,11 @@ namespace GameEngine {
 		/// The Z size of the platform
 		/// </summary>
 		const float platformLength = 33.3f;
+
+
+		// Some emmision colors for the spaceship
+		const glm::vec3 window_color_emm(3.55, 3.55, 1.51);
+		const glm::vec3 exhaust_color_emm(46, 103, 248);
 	}
 
 	class GameObject

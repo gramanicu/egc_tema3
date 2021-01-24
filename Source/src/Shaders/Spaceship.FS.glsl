@@ -39,7 +39,10 @@ layout(location = 0) out vec4 FragColor;
 layout(location = 1) out vec4 BrightColor;
 
 uniform sampler2D texture1;
-uniform bool has_texture;
+uniform sampler2D window_map;
+uniform sampler2D exhaust_map;
+uniform vec3 window_color_emm;
+uniform vec3 exhaust_color_emm;
 
 // Values from the vertex shader
 in vec3 world_position;	// fragment position
@@ -104,24 +107,24 @@ vec3 compute_lighting(Light light, Material material, vec3 color, vec3 normal, v
 	return (ambient_light + diffuse_light + specular_light);
 }
 
-float map(float value, float min1, float max1, float min2, float max2) {
-	return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
-}
-
 void main()
 {	
-	vec4 color_rgba;
-	if(has_texture) {
-		color_rgba = texture(texture1, frag_coord).rgba;
-	} else {
-		color_rgba = vec4(material.ambient, 1.f);
-	}
+	vec4 color_rgba = texture(texture1, frag_coord).rgba;
+	vec4 window_m = texture(window_map, frag_coord).rgba;
+	vec4 exhaust_m = texture(exhaust_map, frag_coord).rgba;
 
 	// Invisible parts in the texture will be transparent
 	if (color_rgba.a < alpha_cutoff)
 	{
-//		discard;
-		color_rgba = vec4(material.emmisive, 1.f);
+		discard;
+	}
+
+	if (window_m.a > alpha_cutoff) {
+		color_rgba = vec4(window_color_emm, 1.f);
+	}
+
+	if (exhaust_m.a > alpha_cutoff) {
+		color_rgba = vec4(exhaust_color_emm, 1.f);
 	}
 
 	vec3 color = color_rgba.rgb;

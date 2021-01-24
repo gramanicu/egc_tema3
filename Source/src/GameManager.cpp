@@ -41,11 +41,14 @@ GameManager::~GameManager()
 
 void GameManager::Init()
 {
-	glEnable(GL_MULTISAMPLE);
 	// Load meshes
 	for each (auto & name in Constants::meshNames) {
 		LoadMesh(name, "Source/src/Meshes/");
 	}
+
+	// Create a quad for the framebuffers
+	Mesh* mesh = GameEngine::CreateQuad();
+	meshes[mesh->GetMeshID()] = mesh;
 
 	// Load shaders
 	for each (auto & name in Constants::shaderNames) {
@@ -68,7 +71,7 @@ void GameManager::Init()
 	GameObject::meshes = &meshes;
 	GameObject::shaders = &shaders;
 	GameObject::textures = &textures;
-	
+
 	// Initialize the player object
 	{
 		GameObject player("player", glm::vec3(Constants::playerStartingPosition));
@@ -76,6 +79,106 @@ void GameManager::Init()
 		player.isInJump = true;
 		addGameObject(player);
 	}
+
+	// Initialize the skybox
+	{
+		skybox = GameObject("skybox", glm::vec3(Constants::playerStartingPosition));
+	}
+
+	InitFramebuffers();
+}
+
+void GameManager::InitFramebuffers() {
+	glEnable(GL_MULTISAMPLE);
+
+	// -- MSAA framebuffer configuration --
+	glGenFramebuffers(1, &msaa_framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, msaa_framebuffer);
+
+	// Create a color attachement texture
+	glGenTextures(2, msaa_colorbuffers);
+	for (uint i = 0; i < 2; ++i) {
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaa_colorbuffers[i]);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Constants::multisamples, GL_RGBA16F, 2560, 1440, GL_TRUE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		// Attach texture to framebuffer
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D_MULTISAMPLE, msaa_colorbuffers[i], 0);
+	}
+
+	// Create a renderbuffer object for depth and stencil attachment
+	glGenRenderbuffers(1, &msaa_renderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, msaa_renderbuffer);
+	glRenderbufferStorageMultisample(GL_RENDERBUFFER, Constants::multisamples, GL_DEPTH24_STENCIL8, 2560, 1440);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, msaa_renderbuffer);
+
+	uint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+	
+	// Check if the framebuffer is complete
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer(MSAA) is not complete!\n";
+		exit(-1);
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	// -- End MSAA framebuffer configuration --
+
+	// -- Ping-Pong framebuffers configuration --
+	glGenFramebuffers(2, pp_framebuffers);
+	glGenTextures(2, pp_colorbuffers);
+
+	for (uint i = 0; i < 2; ++i) {
+		glBindFramebuffer(GL_FRAMEBUFFER, pp_framebuffers[i]);
+
+		glBindTexture(GL_TEXTURE_2D, pp_colorbuffers[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 2560, 1440, 0, GL_RGBA, GL_FLOAT, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pp_colorbuffers[i], 0);
+		// Check if the framebuffer is complete
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			std::cout << "ERROR::FRAMEBUFFER:: Framebuffer(Ping-Pong) is not complete!\n";
+			exit(-1);
+		}
+	}
+
+	// -- End Ping-Pong framebuffers configuration
+
+	// -- Post-Processing framebuffer configuration -- 
+	glGenFramebuffers(1, &fx_framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, fx_framebuffer);
+
+	// Create a color attachement texture
+	glGenTextures(2, fx_colorbuffers);
+	for (uint i = 0; i < 2; ++i) {
+		glBindTexture(GL_TEXTURE_2D, fx_colorbuffers[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 2560, 1440, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		// Attach texture to framebuffer
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, fx_colorbuffers[i], 0);
+	}
+
+	glDrawBuffers(2, attachments);
+
+	// Check if the framebuffer is complete
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer(Post-Processing) is not complete!\n";
+		exit(-1);
+	}
+
+	// -- End Post-Processing framebuffer configuration --
 }
 
 void GameManager::addGameObject(GameEngine::GameObject object)
@@ -115,13 +218,13 @@ void GameManager::LoadMesh(std::string name, std::string meshesPath)
 
 void GameManager::FrameStart()
 {
-	// clears the color buffer (using the previously set color) and depth buffer
+	// Bind to framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, msaa_framebuffer);
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
 
-	glm::ivec2 resolution = window->GetResolution();
-	// sets the screen area where to draw
-	glViewport(0, 0, resolution.x, resolution.y);
+	glViewport(0, 0, 2560, 1440);
 }
 
 void GameManager::UpdateCamera() {
@@ -159,11 +262,11 @@ void GameManager::UpdatePlayer()
 
 	if (window->KeyHold(GLFW_KEY_A)) {
 		// Move player left
-		gameObjects[0].getRigidBody().state.v.x = -Constants::lateralSpeed;
+		gameObjects[0].getRigidBody().addImpulse(-Constants::lateralSpeed, 0, 0);
 	}
 	else if (window->KeyHold(GLFW_KEY_D)) {
 		// Move player right
-		gameObjects[0].getRigidBody().state.v.x = Constants::lateralSpeed ;
+		gameObjects[0].getRigidBody().addImpulse(Constants::lateralSpeed, 0, 0);
 	}
 	else if (window->KeyHold(GLFW_KEY_W)) {
 		if (!gameState.playerState.isFullSpeed) {
@@ -243,8 +346,8 @@ void Skyroads::GameManager::RenderUI()
 	float percent = gameState.playerState.fuel / Constants::maxFuel;
 	fuelbar.setScale(glm::vec3(Constants::fuelbarScale.x, Constants::fuelbarScale.y * percent, Constants::fuelbarScale.z));
 
-	fuelbar.Render2D();
 	ufuelbar.Render2D();
+	fuelbar.Render2D();
 
 	// Render the number of lifes
 	int lifesToRender = gameState.playerState.lives;
@@ -261,6 +364,9 @@ void Skyroads::GameManager::RenderUI()
 
 void GameManager::Update(float deltaTimeSeconds)
 {
+	// Render skybox
+	RenderSkybox();
+
 	UpdateGameState(deltaTimeSeconds);
 
 	std::vector<GameEngine::GameObject*> gameObjectsVector;
@@ -269,18 +375,45 @@ void GameManager::Update(float deltaTimeSeconds)
 	}
 
 	// Update Light
-	glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x + Constants::lightPositionOffset;
+	glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x;
 	
+	// Back light
 	std::vector<GameEngine::Light> lights;
 	GameEngine::Light light = {
 		GameEngine::LightType::Spot,
 		lightPosition,
-		glm::vec3(0, -1, 0),
+		glm::vec3(0, 0, 1),
 		glm::vec3(0.25f),
-		glm::vec3(0.45f),
-		glm::vec3(0.9f, 0.95f, 1.f),
-		1.0f, 0.0025f, 0.0000125f,
-		glm::radians(45.f), glm::radians(25.f)
+		glm::vec3(1.f, 1.f, 5.f),
+		glm::vec3(0.5f, 0.5f, 1.5f),
+		1.0f, 0.09f, 0.032f,
+		glm::cos(glm::radians(45.f)), glm::cos(glm::radians(90.f))
+	};
+	lights.push_back(light);
+
+	// Front light
+	light = {
+		GameEngine::LightType::Spot,
+		lightPosition,
+		glm::vec3(0, 0, -1),
+		glm::vec3(0.25f),
+		glm::vec3(0.5f, 0.5f, 0.5f),
+		glm::vec3(1.5f, 1.5f, 1.f),
+		1.0f, 0.014f, 0.0007f,
+		glm::cos(glm::radians(25.f)), glm::cos(glm::radians(45.f))
+	};
+	lights.push_back(light);
+
+	// Directional light
+	light = {
+		GameEngine::LightType::Directional,
+		lightPosition,
+		glm::vec3(0, -1, 0),
+		glm::vec3(0.3f),
+		glm::vec3(0.1f),
+		glm::vec3(0.15f),
+		1.0f, 1.f, 1.f,
+		glm::cos(glm::radians(90.f)), glm::cos(glm::radians(90.f))
 	};
 	lights.push_back(light);
 	
@@ -296,7 +429,106 @@ void GameManager::Update(float deltaTimeSeconds)
 		object.second.Render(camera, lights);
 	};
 
+	PostProcessing();	// Post-Processing is not applied to the UI or Skybox
 	RenderUI();
+}
+
+void GameManager::RenderSkybox() {
+	glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x + Constants::lightPositionOffset;
+	std::vector<GameEngine::Light> lights;
+	GameEngine::Light light = {
+		GameEngine::LightType::Spot,
+		lightPosition,
+		glm::vec3(0, -1, 0),
+		glm::vec3(0.25f),
+		glm::vec3(0.8f, 1.f, 1.f),
+		glm::vec3(0.8f, 1.f, 1.f),
+		1.0f, 0.027f, 0.0028f,
+		glm::cos(glm::radians(12.5f)), glm::cos(glm::radians(25.f))
+	};
+	lights.push_back(light);
+
+	skybox.setPosition(gameObjects[0].getRigidBody().state.x);
+	skybox.Render(camera, lights);
+}
+
+void GameManager::PostProcessing() {
+	// Store the current screen resolution
+	glm::ivec2 resolution = window->GetResolution();
+	
+	// Copy data from the msaa framebuffer to the post-processing fx framebuffer
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, msaa_framebuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fx_framebuffer);
+	for (uint i = 0; i < 2; ++i) {
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
+		glBlitFramebuffer(0, 0, 2560, 1440, 0, 0, 2560, 1440, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Copy data from the bright msaa color buffer to the pp buffers
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, msaa_framebuffer);
+	for (uint i = 0; i < 2; ++i) {
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, pp_framebuffers[i]);
+		glReadBuffer(GL_COLOR_ATTACHMENT1);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
+		glBlitFramebuffer(0, 0, 2560, 1440, 0, 0, 2560, 1440, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
+ 
+	// -- Apply the two-pass Gaussian Blur --
+	glUseProgram(shaders["Blur"]->program);
+	bool horizontal = true;
+	glDisable(GL_DEPTH_TEST);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, 2560, 1440);
+	for (uint i = 0; i < Constants::blur_amount; ++i) {
+		// Activate the ping pong framebuffer
+		// Each iteration, we will fill one of the "pp" framebuffers with the other's color
+		glBindFramebuffer(GL_FRAMEBUFFER, pp_framebuffers[horizontal]);
+		glUniform1f(glGetUniformLocation(shaders["Blur"]->program, "horizontal"), (GLint)horizontal);
+
+		// Copy the color data to the ping-pong color buffer at the first iteration
+		glBindTexture(GL_TEXTURE_2D, i == 0 ? pp_colorbuffers[horizontal] : pp_colorbuffers[!horizontal]);
+
+		glBindVertexArray(meshes["quad"]->GetBuffers()->VAO);
+		glDrawElements(meshes["quad"]->GetDrawMode(), static_cast<int>(meshes["quad"]->indices.size()), GL_UNSIGNED_SHORT, 0);
+
+		// Switch framebuffers
+		horizontal = !horizontal;
+	}
+
+	// -- Copy the "bloom" to the bright color buffer of the fx framebuffer
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, pp_framebuffers[!horizontal]);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fx_framebuffer);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT1);
+	glBlitFramebuffer(0, 0, 2560, 1440, 0, 0, 2560, 1440, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+	// -- Blend the textures into the post-fx framebuffer and apply post-processing fx --
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glViewport(0, 0, resolution.x, resolution.y);
+
+	glUseProgram(shaders["ScreenShader"]->program);
+	glBindVertexArray(meshes["quad"]->GetBuffers()->VAO);
+
+	// Load the two textures
+	GLuint shader_program = shaders["ScreenShader"]->program;
+	glUniform1i(glGetUniformLocation(shader_program, "screenTexture"), 0);
+	glUniform1i(glGetUniformLocation(shader_program, "bloomTexture"), 1);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, fx_colorbuffers[0]);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, fx_colorbuffers[1]);
+
+	// Use the screen shader (Post-FX)
+	glUniform1f(glGetUniformLocation(shader_program, "gamma"), (GLfloat)Constants::gamma);
+	glUniform1f(glGetUniformLocation(shader_program, "exposure"), (GLfloat)Constants::exposure);
+	glDrawElements(meshes["quad"]->GetDrawMode(), static_cast<int>(meshes["quad"]->indices.size()), GL_UNSIGNED_SHORT, 0);
+
+	glEnable(GL_DEPTH_TEST);
 }
 
 void GameManager::FrameEnd()
@@ -376,6 +608,11 @@ void GameManager::PlatformManagement()
 		int minLaneID = std::max_element(nps.begin(), nps.end()) - nps.begin(); // Max because the z is in descending order
 
 		int platType = rand() % 100;
+
+		if (gameState.platformCount < Constants::lanesX.size()) {
+			platType = 0;	// First platforms should be simple
+		}
+
 		int platGap = rand() % (Constants::maxPlatformGap - Constants::minPlatformGap) + Constants::minPlatformGap;
 
 		if (platType < Constants::simplePlatPercent) {
@@ -473,6 +710,9 @@ void GameManager::OnKeyPress(int key, int mods)
 		gameState.cameraSettings.distanceToTarget -= 0.25f;
 		std::cout << "New zoom " << gameState.cameraSettings.distanceToTarget << "\n";
 	} break;*/
+	case GLFW_KEY_ESCAPE: {
+		exit(-1);
+	}
 	}
 
 }

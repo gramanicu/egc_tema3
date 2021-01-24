@@ -47,7 +47,7 @@ WindowObject::WindowObject(WindowProperties properties)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-	glfwWindowHint(GLFW_SAMPLES, 64);
+	glfwWindowHint(GLFW_SAMPLES, 16);
 
 	// Init OpenGL Window
 	props.fullScreen ? FullScreen() : WindowMode();

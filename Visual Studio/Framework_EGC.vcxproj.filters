@@ -94,6 +94,9 @@
     <ClCompile Include="..\Source\src\GameEngine\Transform.cpp">
       <Filter>src\GameEngine</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\src\GameEngine\Objects.cpp">
+      <Filter>src\GameEngine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\Core\World.h">
@@ -174,6 +177,9 @@
     <ClInclude Include="..\Source\src\GameEngine\Lighting.hpp">
       <Filter>src\GameEngine</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\src\GameEngine\Objects.hpp">
+      <Filter>src\GameEngine</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Source\src\Shaders\Base.VS.glsl">
@@ -192,6 +198,36 @@
       <Filter>src\Shaders</Filter>
     </None>
     <None Include="..\Source\src\Shaders\Distorted.FS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\EmmisiveTransparency.FS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\EmmisiveTransparency.VS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\ScreenShader.FS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\ScreenShader.VS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\Skybox.FS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\Skybox.VS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\Blur.VS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\Blur.FS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\Spaceship.VS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\Spaceship.FS.glsl">
       <Filter>src\Shaders</Filter>
     </None>
   </ItemGroup>

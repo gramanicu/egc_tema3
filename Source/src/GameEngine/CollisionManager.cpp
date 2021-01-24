@@ -30,12 +30,12 @@ bool GameEngine::CollisionManager::isCollision(const Collider& a, const Collider
             firstMin = firstPos - firstDim * 0.5f;
             secondMin = secondPos - secondDim * 0.5f;
             firstMax = firstPos + firstDim * 0.5f;
-            secondMax = firstPos + secondDim * 0.5f;
+            secondMax = secondPos + secondDim * 0.5f;
 
             // Check for the collision
-            return ((firstMin.x <= secondMin.x && firstMax.x >= secondMax.x) &&
-                (firstMin.y <= secondMin.y && firstMax.y >= secondMax.y) &&
-                (firstMin.z <= secondMin.z && firstMax.z >= secondMax.z));
+            return ((firstMin.x <= secondMax.x && firstMax.x >= secondMin.x) &&
+                (firstMin.y <= secondMax.y && firstMax.y >= secondMin.y) &&
+                (firstMin.z <= secondMax.z && firstMax.z >= secondMin.z));
         }
         else {
             // -- Sphere - Sphere colliders --
