@@ -120,8 +120,7 @@ void main()
 	// Invisible parts in the texture will be transparent
 	if (color_rgba.a < alpha_cutoff)
 	{
-//		discard;
-		color_rgba = vec4(material.emmisive, 1.f);
+		discard;
 	}
 
 	vec3 color = color_rgba.rgb;

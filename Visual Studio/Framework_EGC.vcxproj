@@ -81,6 +81,8 @@
     <None Include="..\Source\src\Shaders\Distorted.VS.glsl" />
     <None Include="..\Source\src\Shaders\EmmisiveTransparency.FS.glsl" />
     <None Include="..\Source\src\Shaders\EmmisiveTransparency.VS.glsl" />
+    <None Include="..\Source\src\Shaders\Planet.FS.glsl" />
+    <None Include="..\Source\src\Shaders\Planet.VS.glsl" />
     <None Include="..\Source\src\Shaders\ScreenShader.FS.glsl" />
     <None Include="..\Source\src\Shaders\ScreenShader.VS.glsl" />
     <None Include="..\Source\src\Shaders\Skybox.FS.glsl" />

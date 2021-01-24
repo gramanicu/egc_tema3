@@ -27,13 +27,16 @@ struct Light {
 
 	// Light attenuation
 	float constant;
-    float linear;
-    float quadratic;
+	float linear;
+	float quadratic;
 
 	// Spot light cutoff
-    float cutOff;
-    float outerCutOff;
+	float cutOff;
+	float outerCutOff;
 };
+
+layout(location = 0) out vec4 FragColor;
+layout(location = 1) out vec4 BrightColor;
 
 uniform sampler2D texture1;
 uniform bool has_texture;
@@ -52,14 +55,16 @@ uniform Light lights[max_light_sources];
 // Uniforms for object properties
 uniform Material material;
 
-out vec4 out_color;
+// Uniforms for other data
+uniform float time;
 
 vec3 compute_lighting(Light light, Material material, vec3 color, vec3 normal, vec3 viewDir) {
 	// Direction of the light
 	vec3 lightDir;	// L
-	if(light.type == Directional) {
+	if (light.type == Directional) {
 		lightDir = normalize(-light.direction);
-	} else {
+	}
+	else {
 		lightDir = normalize(light.position - world_position);
 	}
 
@@ -70,7 +75,7 @@ vec3 compute_lighting(Light light, Material material, vec3 color, vec3 normal, v
 	float diffuse_value = max(dot(lightDir, normal), 0.f);
 	vec3 diffuse_light = (diffuse_value * light.diffuse) * color;
 	//vec3 diffuse_light = (diffuse_value * light.diffuse) * material.diffuse;
-	
+
 	// Specular
 	vec3 reflectDir = reflect(-lightDir, normal);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
@@ -79,7 +84,7 @@ vec3 compute_lighting(Light light, Material material, vec3 color, vec3 normal, v
 	vec3 specular_light = (specular_value * light.specular);
 
 	// Spotlight (soft edges)
-	if(light.type == Spot) {
+	if (light.type == Spot) {
 		float theta = dot(lightDir, normalize(-light.direction));
 		float epsilon = light.cutOff - light.outerCutOff;
 		float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.f, 1.f);
@@ -87,32 +92,32 @@ vec3 compute_lighting(Light light, Material material, vec3 color, vec3 normal, v
 		diffuse_light *= intensity;
 		specular_light *= intensity;
 	}
-	
+
 	// Attenuation
-	if(light.type != Directional) {
-		float d	= distance(light.position, world_position);
+	if (light.type != Directional) {
+		float d = distance(light.position, world_position);
 		float attenuation = 1.0f / (light.constant + light.linear * d + light.quadratic * (d * d));
 
 		diffuse_light *= attenuation;
 		specular_light *= attenuation;
 	}
-	
+
 	return (ambient_light + diffuse_light + specular_light);
 }
 
 void main()
-{	
+{
 	vec4 color_rgba;
-	if(has_texture) {
+	if (has_texture) {
 		color_rgba = texture(texture1, frag_coord).rgba;
-	} else {
+	}
+	else {
 		color_rgba = vec4(material.ambient, 1.f);
 	}
 
-	// Invisible parts in the texture will be transparent
+	// Invisible parts in the texture will use the emmisive
 	if (color_rgba.a < alpha_cutoff)
 	{
-//		discard;
 		color_rgba = vec4(material.emmisive, 1.f);
 	}
 
@@ -122,8 +127,17 @@ void main()
 	vec3 viewDir = normalize(eye_position - world_position);	// V
 
 	vec3 result = vec3(0);
-	for(int i = 0; i < lights_count; ++i) {
+	for (int i = 0; i < lights_count; ++i) {
 		result += compute_lighting(lights[i], material, color, normal, viewDir);
 	}
-	out_color = vec4(result, 1.0f);
+
+	float brightness = dot(result, vec3(0.2126, 0.7152, 0.0722));
+	if (brightness > 1.f) {
+		BrightColor = vec4(result, 1.f);
+	}
+	else {
+		BrightColor = vec4(0.f, 0.f, 0.f, 1.f);
+	}
+
+	FragColor = vec4(result, 1.0f);
 }

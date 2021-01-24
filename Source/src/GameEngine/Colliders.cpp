@@ -44,7 +44,7 @@ GameEngine::Collider::Collider(const long int id, const glm::vec3& pos, const gl
 {
     gameObjectID = id;
     _affectsPhysics = false;
-    position = position;
+    position = pos;
     dimensions = dim;
     radius = 0;
     type = ColliderType::BoxCollider;

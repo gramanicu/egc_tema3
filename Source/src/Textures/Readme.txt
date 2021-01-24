@@ -1,0 +1,1 @@
+Credits: (Planet/Star textures) https://www.solarsystemscope.com/textures/

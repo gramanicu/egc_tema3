@@ -38,8 +38,8 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 	}
 	else if (type.rfind("platform_", 0) == 0) {
 		scale = glm::vec3(1, 0.25f, ObjectConstants::platformLength);
-		mesh = (*meshes)["platform"];
-		shader = (*shaders)["Base"];
+		mesh = (*meshes)["cube"];
+		shader = (*shaders)["EmmisiveTransparency"];
 		texture = (*textures)["platform"];
 		_hasTexture = true;
 		material = {
@@ -61,9 +61,139 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 
 		UpdatePlatformData();
 	}
+	else if (type == "planet") {
+		_hasTexture = true;
+		_isLight = false;
+		mesh = (*meshes)["c_sphere"];
+		shader = (*shaders)["Planet"];
+		material = {
+			glm::vec3(1, 0, 0),
+			glm::vec3(1, 0, 0),
+			glm::vec3(32.f),
+			glm::vec3(0.05f),
+			16.f
+		};
+
+		collider = new Collider(id, this->position, 0.001f);
+		collider->affectsPhysics(false);
+		rigidbody.state.x = this->position;
+		rigidbody.physics_enabled = true;
+		rigidbody.state.drag_coef = 0.f;
+		rigidbody.state.gravity_coef = 0.f;
+
+		int planet = rand() % 6;
+		switch (planet) {
+		case 0: {
+			scale = glm::vec3(0.5);
+			texture = (*textures)["icy"];
+			material.shininess = 2.5;
+		} break;
+		case 1: {
+			scale = glm::vec3(0.5);
+			texture = (*textures)["mars"];
+			material.shininess = 1.5;
+		} break;
+		case 2: {
+			scale = glm::vec3(1);
+			texture = (*textures)["neptune"];
+			material.shininess = 2.5;
+		} break;
+		case 3: {
+			scale = glm::vec3(2);
+			texture = (*textures)["jupiter"];
+			material.shininess = 2.5;
+		} break;
+		case 4: {
+			scale = glm::vec3(2);
+			texture = (*textures)["uranus"];
+			material.shininess = 1.5;
+		} break;
+		case 5: {
+			scale = glm::vec3(1);
+			texture = (*textures)["venus"];
+			material.shininess = 2.5;
+		} break;
+		}
+	}
+	else if (type == "star") {
+		scale = glm::vec3(4.);
+		_hasTexture = true;
+		_isLight = true;
+		mesh = (*meshes)["c_sphere"];
+		shader = (*shaders)["Planet"];
+		material = {
+			glm::vec3(1, 0, 0),
+			glm::vec3(1, 0, 0),
+			glm::vec3(32.f),
+			glm::vec3(0.05f),
+			96.f
+		};
+
+		collider = new Collider(id, this->position, 0.001f);
+		collider->affectsPhysics(false);
+		rigidbody.state.x = this->position;
+		rigidbody.physics_enabled = true;
+		rigidbody.state.drag_coef = 0.f;
+		rigidbody.state.gravity_coef = 0.f;
+
+		light = {
+			GameEngine::LightType::Point,
+			position,
+			glm::vec3(0, -1, 0),
+			glm::vec3(0.3f),
+			glm::vec3(0.1f),
+			glm::vec3(0.15f),
+			1.0f, 0.014f, 0.0007f,
+			glm::cos(glm::radians(90.f)), glm::cos(glm::radians(90.f))
+		};
+
+		int star = rand() % 2;
+		switch (star) {
+		case 0: {
+			texture = (*textures)["star_blue"];
+		} break;
+		case 1: {
+			texture = (*textures)["star_red"];
+		} break;
+		}
+	}
+	else if (type.rfind("obstacle_", 0) == 0) {
+		scale = glm::vec3(1.);
+		mesh = (*meshes)["cube"];
+		shader = (*shaders)["EmmisiveTransparency"];
+		_hasTexture = true;
+		material = {
+			glm::vec3(1, 0, 0),
+			glm::vec3(1, 0, 0),
+			glm::vec3(1.f),
+			glm::vec3(0.30f),
+			32.f
+		};
+
+
+		rigidbody.state.x = this->position;
+		rigidbody.physics_enabled = false;
+
+		std::string type_string = type.substr(type.find("_") + 1);
+		if (type_string == "bad") {
+			material.ambient = glm::vec3(1, 0, 0);
+			material.emmisive = glm::vec3(122, 0, 0);
+			texture = (*textures)["obstacle1"];
+			scale = glm::vec3(10, 2, 1);
+			collider = new Collider(id, position, scale);
+			collider->affectsPhysics(true);
+		}
+		else if (type_string == "good") {
+			material.ambient = glm::vec3(0.9, 0.6, 0.2);
+			material.emmisive = glm::vec3(0, 122, 0);
+			texture = (*textures)["obstacle2"];
+			collider = new Collider(id, this->position, glm::vec3(1.2));
+			collider->affectsPhysics(true);
+		}
+	}
 	else if (type == "sphere") {
 		scale = glm::vec3(0.1);
-		mesh = (*meshes)["sphere"];
+		mesh = (*meshes)["c_sphere"];
 		shader = (*shaders)["Base"];
 		material = {
 			glm::vec3(0.f),
@@ -324,6 +454,20 @@ std::vector<int> GameEngine::GameObject::ManageCollisions(std::vector<GameObject
 			rigidbody.state.x.y = ObjectConstants::platformTopHeight + ObjectConstants::playerHeight / 4;
 			isInJump = false;
 		}
+
+		std::vector<GameObject*> obstacles;
+		for (auto& obj : collCheck) {
+			if (obj->type.rfind("obstacle_", 0) == 0) {
+				obstacles.push_back(obj);
+			}
+		}
+
+		std::vector<int> collided_obst = CollisionCheck(obstacles);
+
+		for (auto& val : collided_obst) {
+			collided.push_back(val);
+		}
+
 		return collided;		// Continue other collisions from here
 	}
 	
@@ -342,6 +486,9 @@ glm::vec3 GameEngine::GameObject::getScale() const
 
 void GameEngine::GameObject::setScale(const glm::vec3 newScale)
 {
+	if (collider != nullptr) {
+		collider->setDimensions(newScale);
+	}
 	scale = newScale;
 }
 
@@ -374,7 +521,6 @@ void GameEngine::GameObject::setType(const std::string newType)
 {
 	type = newType;
 }
-
 
 std::vector<int> GameEngine::GameObject::CollisionCheck(std::vector<GameObject*> gameObjects)
 {

@@ -50,6 +50,12 @@ void GameManager::Init()
 	Mesh* mesh = GameEngine::CreateQuad();
 	meshes[mesh->GetMeshID()] = mesh;
 
+	// Load meshes (the ones that are not loaded from .obj files
+	mesh = GameEngine::CreateCube();
+	meshes[mesh->GetMeshID()] = mesh;
+	mesh = GameEngine::CreateSphere();
+	meshes[mesh->GetMeshID()] = mesh;
+
 	// Load shaders
 	for each (auto & name in Constants::shaderNames) {
 		LoadShader(name, "Source/src/Shaders/");
@@ -59,7 +65,7 @@ void GameManager::Init()
 	for each (auto & name in Constants::textureNames) {
 		LoadTexture(name, ".png", "Source/src/Textures/");
 	}
-
+	 
 	// Load models
 	for each (auto & name in Constants::modelNames) {
 		LoadTexture(name, ".png", "Source/src/Models/");
@@ -83,6 +89,52 @@ void GameManager::Init()
 	// Initialize the skybox
 	{
 		skybox = GameObject("skybox", glm::vec3(Constants::playerStartingPosition));
+	}
+
+	// Initialize permanent lights
+	{
+		// Update Light
+		glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x;
+
+		// Exhaust light
+		GameEngine::Light light = {
+			GameEngine::LightType::Spot,
+			lightPosition,
+			glm::vec3(0, 0, 1),
+			glm::vec3(0.25f),
+			glm::vec3(1.f, 1.f, 5.f),
+			glm::vec3(0.5f, 0.5f, 1.5f),
+			1.0f, 0.09f, 0.032f,
+			glm::cos(glm::radians(45.f)), glm::cos(glm::radians(90.f))
+		};
+		permanentLights.push_back(light);
+
+		// Search light
+		light = {
+			GameEngine::LightType::Spot,
+			lightPosition,
+			glm::vec3(0, 0, -1),
+			glm::vec3(0.25f),
+			glm::vec3(0.5f, 0.5f, 0.5f),
+			glm::vec3(1.5f, 1.5f, 1.f),
+			1.0f, 0.014f, 0.0007f,
+			glm::cos(glm::radians(25.f)), glm::cos(glm::radians(45.f))
+		};
+		permanentLights.push_back(light);
+
+		// Directional light - ambient
+		light = {
+			GameEngine::LightType::Directional,
+			lightPosition,
+			glm::vec3(0, -1, 0),
+			glm::vec3(0.3f),
+			glm::vec3(0.1f),
+			glm::vec3(0.15f),
+			1.0f, 1.f, 1.f,
+			glm::cos(glm::radians(90.f)), glm::cos(glm::radians(90.f))
+		};
+		permanentLights.push_back(light);
+
 	}
 
 	InitFramebuffers();
@@ -309,6 +361,9 @@ void GameManager::UpdateGameState(const float deltaTime)
 	// Update the platforms
 	PlatformManagement();
 
+	// Update the decorations
+	DecorationManagement();
+
 	// Check fuel state
 	float speedFuelFactor = mapBetweenRanges(gameState.playerState.playerSpeed, Constants::minSpeed, Constants::maxSpeed, 0.5, 1.5, 1);
 	gameState.playerState.fuel -= deltaTime * Constants::fuelFlow * speedFuelFactor;
@@ -367,55 +422,32 @@ void GameManager::Update(float deltaTimeSeconds)
 	// Render skybox
 	RenderSkybox();
 
+	// Update the lights attached to the player
+	glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x;
+	permanentLights[0].position = lightPosition;
+	permanentLights[1].position = lightPosition;
+
 	UpdateGameState(deltaTimeSeconds);
 
+	// Create the vector of gameObjects
 	std::vector<GameEngine::GameObject*> gameObjectsVector;
 	for (auto& object : gameObjects) {
 		gameObjectsVector.push_back(&(object.second));
 	}
 
-	// Update Light
-	glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x;
+	// Create the vector of lights
+	std::vector<GameEngine::Light> lightsVector;
+	for (auto& light : permanentLights) {
+		lightsVector.push_back(light);
+	}
+
+	GameEngine::Light auxLight;
+	for (auto& object : gameObjects) {
+		if (object.second.getLight(&auxLight)) {
+			lightsVector.push_back(auxLight);
+		}
+	}
 	
-	// Back light
-	std::vector<GameEngine::Light> lights;
-	GameEngine::Light light = {
-		GameEngine::LightType::Spot,
-		lightPosition,
-		glm::vec3(0, 0, 1),
-		glm::vec3(0.25f),
-		glm::vec3(1.f, 1.f, 5.f),
-		glm::vec3(0.5f, 0.5f, 1.5f),
-		1.0f, 0.09f, 0.032f,
-		glm::cos(glm::radians(45.f)), glm::cos(glm::radians(90.f))
-	};
-	lights.push_back(light);
-
-	// Front light
-	light = {
-		GameEngine::LightType::Spot,
-		lightPosition,
-		glm::vec3(0, 0, -1),
-		glm::vec3(0.25f),
-		glm::vec3(0.5f, 0.5f, 0.5f),
-		glm::vec3(1.5f, 1.5f, 1.f),
-		1.0f, 0.014f, 0.0007f,
-		glm::cos(glm::radians(25.f)), glm::cos(glm::radians(45.f))
-	};
-	lights.push_back(light);
-
-	// Directional light
-	light = {
-		GameEngine::LightType::Directional,
-		lightPosition,
-		glm::vec3(0, -1, 0),
-		glm::vec3(0.3f),
-		glm::vec3(0.1f),
-		glm::vec3(0.15f),
-		1.0f, 1.f, 1.f,
-		glm::cos(glm::radians(90.f)), glm::cos(glm::radians(90.f))
-	};
-	lights.push_back(light);
 	
 	// For every gameObject types (type.first = id, type.second = the object)
 	for (auto& object : gameObjects) {
@@ -426,7 +458,7 @@ void GameManager::Update(float deltaTimeSeconds)
 		CheckCollisions(object.second.ManageCollisions(gameObjectsVector, &gameObjects));
 
 		// Render objects
-		object.second.Render(camera, lights);
+		object.second.Render(camera, lightsVector);
 	};
 
 	PostProcessing();	// Post-Processing is not applied to the UI or Skybox
@@ -434,20 +466,7 @@ void GameManager::Update(float deltaTimeSeconds)
 }
 
 void GameManager::RenderSkybox() {
-	glm::vec3 lightPosition = gameObjects[0].getRigidBody().state.x + Constants::lightPositionOffset;
-	std::vector<GameEngine::Light> lights;
-	GameEngine::Light light = {
-		GameEngine::LightType::Spot,
-		lightPosition,
-		glm::vec3(0, -1, 0),
-		glm::vec3(0.25f),
-		glm::vec3(0.8f, 1.f, 1.f),
-		glm::vec3(0.8f, 1.f, 1.f),
-		1.0f, 0.027f, 0.0028f,
-		glm::cos(glm::radians(12.5f)), glm::cos(glm::radians(25.f))
-	};
-	lights.push_back(light);
-
+	std::vector<GameEngine::Light> lights(0);
 	skybox.setPosition(gameObjects[0].getRigidBody().state.x);
 	skybox.Render(camera, lights);
 }
@@ -539,47 +558,66 @@ void Skyroads::GameManager::CheckCollisions(std::vector<int> collided)
 {
 	if (collided.size() == 0) return;
 
+	std::vector<int> toRemove;
+
 	for (int id : collided) {
 		std::string type = gameObjects[id].getType();
-
-		// Make sure this is a platform
-		if (type.rfind("platform_", 0) != 0) return;
-
-		std::string color_string = type.substr(type.find("_") + 1);
-		if (color_string == "red") {
-			// Instant Loss
-			GameOver();
-		}
-		else if (color_string == "yellow") {
-			// Lose fuel
-			gameState.playerState.fuel -= Constants::fuelLoss;
-			gameObjects[0].setDistorted(Constants::powerAnimationTime);
-		}
-		else if (color_string == "orange") {
-			// Speed up
-			gameState.playerState.isFullSpeed = true;
-			gameState.playerState.forcedSpeedStart = Engine::GetElapsedTime();
-			gameState.playerState.oldPlayerSpeed = gameState.playerState.playerSpeed;
-			gameState.playerState.playerSpeed = Constants::maxSpeed;
-			gameObjects[0].setDistorted(Constants::forcedSpeedTime);
-		}
-		else if (color_string == "green") {
-			// Gain fuel
-			gameState.playerState.fuel += Constants::fuelGain;
-			gameObjects[0].setDistorted(Constants::powerAnimationTime);
-			if (gameState.playerState.fuel > Constants::maxFuel) {
-				gameState.playerState.fuel = Constants::maxFuel;
+		// Check platform collisions
+		if (type.rfind("platform_", 0) == 0) {
+			std::string color_string = type.substr(type.find("_") + 1);
+			if (color_string == "red") {
+				// Instant Loss
+				GameOver();
 			}
-		}
-		else if (color_string == "white") {
-			if (gameState.playerState.lives < Constants::maxLives) {
-				// Gain life
-				gameState.playerState.lives += 1;
+			else if (color_string == "yellow") {
+				// Lose fuel
+				gameState.playerState.fuel -= Constants::fuelLoss;
 				gameObjects[0].setDistorted(Constants::powerAnimationTime);
 			}
-		}
+			else if (color_string == "orange") {
+				// Speed up
+				gameState.playerState.isFullSpeed = true;
+				gameState.playerState.forcedSpeedStart = Engine::GetElapsedTime();
+				gameState.playerState.oldPlayerSpeed = gameState.playerState.playerSpeed;
+				gameState.playerState.playerSpeed = Constants::maxSpeed;
+				gameObjects[0].setDistorted(Constants::forcedSpeedTime);
+			}
+			else if (color_string == "green") {
+				// Gain fuel
+				gameState.playerState.fuel += Constants::fuelGain;
+				gameObjects[0].setDistorted(Constants::powerAnimationTime);
+				if (gameState.playerState.fuel > Constants::maxFuel) {
+					gameState.playerState.fuel = Constants::maxFuel;
+				}
+			}
+			else if (color_string == "white") {
+				if (gameState.playerState.lives < Constants::maxLives) {
+					// Gain life
+					gameState.playerState.lives += 1;
+					gameObjects[0].setDistorted(Constants::powerAnimationTime);
+				}
+			}
 
-		gameObjects[id].setType("platform_purple");
+			gameObjects[id].setType("platform_purple");
+		}
+		else if (type.rfind("obstacle_", 0) == 0) {
+			std::string type_string = type.substr(type.find("_") + 1);
+			if (type_string == "good") {
+				gameState.collected++;
+				toRemove.push_back(id);
+			}
+			else if (type_string == "bad") {
+				gameState.playerState.lives--;
+				if (gameState.playerState.lives <= 0) {
+					GameOver();
+				}
+				toRemove.push_back(id);
+			}
+		}
+	}
+
+	for (auto& id : toRemove) {
+		gameObjects.erase(id);
 	}
 }
 
@@ -591,10 +629,71 @@ void Skyroads::GameManager::ComputeScore()
 void Skyroads::GameManager::GameOver()
 {
 	std::cout << " --- Game Over --- " << "\n";
-	std::cout << " Your score was : " << (int)gameState.points << "\n";
+	std::cout << " Your score was : " << (int)gameState.points + gameState.collected * 100 << "\n";
 	std::cout << " Press any key to exit ...\n";
 	int aux = _getch();
 	exit(0);
+}
+
+void GameManager::DecorationManagement() {
+	while (gameState.decorationCount < Constants::maxDecorations - 3) {
+		int renderDecoration = rand() % 100;
+
+		int side = rand() % 2;
+		float x = rand() % (int)(Constants::maxDecXOff - Constants::minDecXOff) + Constants::minDecXOff;
+		float y = rand() % (int)Constants::maxDecY;
+		float zoff = rand() % (int)(Constants::maxZOffset - Constants::minZOffset) + Constants::minZOffset;
+		float z;
+		if (side == 0) {
+			x = -x;
+			z = gameState.decorationLeftZ;
+			gameState.decorationLeftZ -= zoff;
+		}
+		else {
+			z = gameState.decorationRightZ;
+			gameState.decorationRightZ -= zoff;
+		}
+
+		glm::vec3 position(x, y, z);
+
+		x = (rand() % 100) / 100.f * 5.f;
+		y = (rand() % 100) / 100.f * 5.f;
+		z = (rand() % 100) / 100.f * 5.f;
+
+		if (renderDecoration < Constants::starPercent) {
+			GameEngine::GameObject star("star", position);
+			star.getRigidBody().addImpulse(glm::vec3(x, y, z));
+			addGameObject(star);
+			gameState.decorationCount++;
+			gameState.starsCount++;
+		}
+		else {
+			GameEngine::GameObject planet("planet", position);
+			planet.getRigidBody().addImpulse(glm::vec3(x, y, z));
+			addGameObject(planet);
+			gameState.decorationCount++;
+		}
+	}
+
+	// Check what decorations are out of sight (need to be removed)
+	std::vector<int> toRemove;
+	for (auto& object : gameObjects) {
+		if (object.second.getType() == "star" || object.second.getType() == "planet") {
+			if (glm::distance(object.second.getPosition(), gameObjects[0].getPosition()) > Constants::despawnDistance &&
+				object.second.getPosition().z > gameObjects[0].getPosition().z) {
+				toRemove.push_back(object.first);
+			}
+		}
+	}
+
+	// Remove the decorations
+	for (auto& id : toRemove) {
+		if (gameObjects[id].getType() == "star") {
+			gameState.starsCount--;
+		}
+		gameState.decorationCount--;
+		gameObjects.erase(id);
+	}
 }
 
 void GameManager::PlatformManagement()
@@ -651,6 +750,19 @@ void GameManager::PlatformManagement()
 			}
 		}
 
+		int obstacle = rand() % 100;
+		if (obstacle < Constants::obstaclesPercent) {
+			GameEngine::GameObject obstacle("obstacle_bad", glm::vec3(Constants::lanesX[1], 1, nps[minLaneID]));
+			addGameObject(obstacle);
+		}
+		else {
+			int collectible = rand() % 100;
+			if (collectible < Constants::pointsPercent) {
+				GameEngine::GameObject obstacle("obstacle_good", glm::vec3(Constants::lanesX[minLaneID], 1, nps[minLaneID]));
+				addGameObject(obstacle);
+			}
+		}
+
 		gameState.platformCount++;
 
 		// Update the next platform spawn for that lane
@@ -661,6 +773,11 @@ void GameManager::PlatformManagement()
 	std::vector<int> toRemove;
 	for (auto& object : gameObjects) {
 		if (object.second.getType().rfind("platform_", 0) == 0) {
+			if (object.second.getPosition().z > gameObjects[0].getPosition().z + GameEngine::ObjectConstants::platformLength / 2 + Constants::noSpawnRange) {
+				toRemove.push_back(object.first);
+			}
+		} else
+		if (object.second.getType().rfind("obstacle_", 0) == 0) {
 			if (object.second.getPosition().z > gameObjects[0].getPosition().z + GameEngine::ObjectConstants::platformLength / 2 + Constants::noSpawnRange) {
 				toRemove.push_back(object.first);
 			}
@@ -699,7 +816,7 @@ void GameManager::OnKeyPress(int key, int mods)
 		// Jump
 		if (!gameObjects[0].isInJump) {
 			gameObjects[0].isInJump = true;
-			gameObjects[0].getRigidBody().state.v.y = 3.33f;
+			gameObjects[0].getRigidBody().state.v.y = 4.f;
 		}
 	} break;
 	/*case GLFW_KEY_KP_SUBTRACT: {

@@ -230,5 +230,11 @@
     <None Include="..\Source\src\Shaders\Spaceship.FS.glsl">
       <Filter>src\Shaders</Filter>
     </None>
+    <None Include="..\Source\src\Shaders\Planet.VS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
+    <None Include="..\Source\src\Shaders\Planet.FS.glsl">
+      <Filter>src\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
