@@ -140,10 +140,10 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 			GameEngine::LightType::Point,
 			position,
 			glm::vec3(0, -1, 0),
-			glm::vec3(0.3f),
-			glm::vec3(0.1f),
+			glm::vec3(0.015f),
+			glm::vec3(0.5f),
 			glm::vec3(0.15f),
-			1.0f, 0.014f, 0.0007f,
+			1.0f, 0.0014f, 0.00007f,
 			glm::cos(glm::radians(90.f)), glm::cos(glm::radians(90.f))
 		};
 
@@ -151,9 +151,11 @@ GameEngine::GameObject::GameObject(const std::string& type, const glm::vec3& pos
 		switch (star) {
 		case 0: {
 			texture = (*textures)["star_blue"];
+			light.diffuse = glm::vec3(0.75f, 0.75f, 5.f);
 		} break;
 		case 1: {
 			texture = (*textures)["star_red"];
+			light.diffuse =glm::vec3(5.f, 0.75f, 0.75f);
 		} break;
 		}
 	}
